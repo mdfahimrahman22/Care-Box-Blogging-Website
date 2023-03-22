@@ -7,6 +7,8 @@ urlpatterns = [
     path('login/', views.obtain_auth_token),
     path('', test_api, name='test_api'),
     path('blogs', blogs_api, name='blogs_api'),
+    path('search_blogs', search_blogs_api, name='search_blogs_api'),
+    path('filter_blogs', filter_blogs_api, name='filter_blogs_api'),
     path('categories', categories_api, name='categories_api'),
     path('my_blogs', MyBlogView.as_view()),
     path('post_blog', MyBlogView.as_view()),
