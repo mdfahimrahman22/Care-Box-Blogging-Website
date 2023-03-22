@@ -7,6 +7,8 @@ from rest_framework.permissions import IsAuthenticated
 from .serializers import *
 import json
 from django.forms.models import model_to_dict
+from django.db.models import Q
+import datetime
 
 
 @api_view(['GET'])
@@ -17,6 +19,48 @@ def test_api(request):
 @api_view(['GET'])
 def blogs_api(request):
     blogs = Blog.objects.all().order_by('-posted_at')
+    serializedData = BlogSerializer(blogs, many=True)
+    return Response(serializedData.data)
+
+
+@api_view(['GET'])
+def search_blogs_api(request):
+    keywords = request.GET.getlist('keyword')
+    query = Q()  # empty Q object
+    for keyword in keywords:
+        # 'or' the queries together
+        query |= Q(title__icontains=keyword)
+        query |= Q(content__icontains=keyword)
+
+    blogs = Blog.objects.filter(query).distinct()
+    serializedData = BlogSerializer(blogs, many=True)
+    return Response(serializedData.data)
+
+
+@api_view(['GET'])
+def filter_blogs_api(request):
+    query = Q()
+    if 'start_date' in request.GET:
+        start_date = request.GET['start_date']
+        if 'end_date' in request.GET:
+            end_date = request.GET['end_date']
+        else:
+            end_date = datetime.datetime.now()
+        query &= Q(posted_at__range=[start_date, end_date])
+
+    if 'username' in request.GET:
+        username = request.GET['username']
+        user = User.objects.filter(username=username).first()
+        query &= Q(author=user)
+
+    if 'category_title' in request.GET:
+        category_title = request.GET['category_title']
+        category = Category.objects.filter(
+            title__contains=category_title).first()
+        query &= Q(category=category)
+
+    blogs = Blog.objects.filter(query).distinct()
+    # blogs = Blog.objects.all()
     serializedData = BlogSerializer(blogs, many=True)
     return Response(serializedData.data)
 
@@ -62,9 +106,9 @@ class MyBlogView(APIView):
     def delete(self, request):
         blogId = request.data['blog_id']
         blog = Blog.objects.filter(id=blogId).first()
-        if blog is None: 
+        if blog is None:
             return Response({'status': 403, 'errors': 'Object not found', 'message': 'Blog ID does not exist'})
-        
+
         blog.delete()
         return Response({'status': 200, 'message': 'Your blog is successfully deleted!'})
 
